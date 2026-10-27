@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StencilForge
 
-## Getting Started
+Turn vector text into 3D-printable spray-paint stencils. Everything runs in the browser: a Rust geometry engine compiled to WebAssembly runs in a Web Worker, and a Next.js + Tailwind UI sits on top.
 
-First, run the development server:
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run wasm        # builds crates/stencil-core to src/engine/pkg (needs Rust + wasm-pack)
+npm run dev         # http://localhost:3000  (landing page) and /studio
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Requirements: Node 20+, Rust with the `wasm32-unknown-unknown` target, and `wasm-pack` (`cargo install wasm-pack`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | What it does |
+| --- | --- |
+| `npm run wasm` | Release build of the Rust engine, copies the binary to `public/wasm/` |
+| `npm run build` | WASM build + static export to `out/` |
+| `npm test` | Vitest: unit tests and the WASM engine run in Node |
+| `npm run test:rust` | Rust tests: topology, bridges, mesh watertightness over every bundled font |
+| `npm run test:e2e` | Playwright: boots the studio, edits text, opens 3D, downloads an STL |
 
-## Learn More
+## How it works
 
-To learn more about Next.js, take a look at the following resources:
+1. **Layout** (`layout.rs`): text is shaped with rustybuzz (kerning, ligatures, variable axes), flattened to polylines at 0.01 mm tolerance, optionally wrapped on an arc.
+2. **Regions** (`geom.rs`): `i_overlay` does the booleans and offsets. A stencil is `slab − letters`; its connected components are *islands*.
+3. **Bridges** (`bridges.rs`): rays are cast from island boundaries across the gap. A Kruskal spanning tree anchors every island, then extra bridges are added, spread around the island, up to *min per island*. Strategies: shortest, axis, fixed angle, radial.
+4. **Band stack** (`pipeline.rs`): the solid is a stack of z-bands. Classic bridges span all bands; floating bridges only occupy the top band; a spray-side chamfer is a staircase of progressively wider cuts.
+5. **Mesher** (`mesh.rs`): integer micrometre geometry, caps from one shared overlay graph per pair of slabs, T-junction repair, and a manifold check used by the tests.
+6. **Export**: binary STL (Rust), 3MF (TypeScript + fflate), SVG cut file and project JSON.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Floating bridges print best spray-face-down; the export dialog turns that orientation on automatically.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Layout
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+crates/stencil-core/   Rust engine (cdylib → wasm)
+src/engine/            worker + client + generated pkg/ (git-ignored)
+src/lib/               store (zustand + undo), defaults, fonts, export, presets
+src/components/        studio UI (viewports, inspector, dialogs) and ui primitives
+public/fonts/          bundled SIL OFL fonts
+```

@@ -1,0 +1,75 @@
+"use client";
+import { Copy, Eye, EyeOff, Plus, Type } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { useStudio } from "@/lib/store";
+import { IconButton, Tip } from "@/components/ui/controls";
+import { cn } from "@/lib/utils";
+
+export function ObjectsPanel() {
+  const objects = useStudio((s) => s.doc.objects);
+  const selectedId = useStudio((s) => s.selectedId);
+  const select = useStudio((s) => s.select);
+  const addText = useStudio((s) => s.addText);
+  const duplicate = useStudio((s) => s.duplicateObj);
+  const update = useStudio((s) => s.updateObj);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between px-4 py-3">
+        <span className="text-[11px] font-semibold tracking-[0.08em] text-ink-100 uppercase">Objects</span>
+        <Tip label="Add text" side="right">
+          <IconButton onClick={addText} className="size-7 text-ember-400 hover:text-ember-300">
+            <Plus className="size-4" />
+          </IconButton>
+        </Tip>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 pb-3">
+        <AnimatePresence initial={false}>
+          {objects.map((o) => {
+            const label = o.content.type === "text" ? o.content.text.split("\n")[0] || "Empty text" : "Object";
+            const on = o.id === selectedId;
+            return (
+              <motion.div
+                key={o.id}
+                layout
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                onClick={() => select(o.id)}
+                className={cn(
+                  "group flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition",
+                  on ? "border-volt-500/50 bg-volt-500/10" : "border-transparent hover:bg-ink-700",
+                )}
+              >
+                <span className={cn("grid size-7 place-items-center rounded-md", on ? "bg-volt-500/20 text-volt-300" : "bg-ink-700 text-ink-200")}>
+                  <Type className="size-3.5" />
+                </span>
+                <span className={cn("min-w-0 flex-1 truncate text-[12.5px]", !o.visible && "text-ink-300 line-through")}>{label}</span>
+                <span className="flex opacity-0 transition group-hover:opacity-100">
+                  <IconButton
+                    className="size-6"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      duplicate(o.id);
+                    }}
+                  >
+                    <Copy className="size-3" />
+                  </IconButton>
+                  <IconButton
+                    className="size-6"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      update(o.id, (x) => void (x.visible = !x.visible));
+                    }}
+                  >
+                    {o.visible ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                  </IconButton>
+                </span>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}

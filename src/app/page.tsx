@@ -1,69 +1,119 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Anchor, Box, Layers3, Printer, Scissors, Sparkles, Type, Zap } from "lucide-react";
+import { LogoMark } from "@/components/studio/Logo";
+
+const FEATURES = [
+  { icon: Anchor, title: "Smart bridges", body: "Every island in A, B, O and 8 is anchored automatically. Pick shortest span, fixed angle, axis-aligned or radial placement." },
+  { icon: Layers3, title: "Floating bridges", body: "Raised bridges let paint flow underneath, so letters look continuous. They print face-down with no supports." },
+  { icon: Type, title: "Any font", body: "Bundled stencil faces, variable-font sliders, text on an arc, or drop in your own TTF / OTF." },
+  { icon: Box, title: "Watertight meshes", body: "Exact integer geometry produces manifold STL and 3MF files that slice cleanly, every time." },
+  { icon: Scissors, title: "Slab designer", body: "Rounded, chamfered, pill, ellipse or outline-hugging slabs with configurable borders and mounting holes." },
+  { icon: Printer, title: "Print-aware", body: "Thin-wall warnings, filament estimates, spray-side chamfers and print orientation built in." },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="h-dvh overflow-y-auto">
+      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <div className="flex items-center gap-2.5">
+          <LogoMark className="size-8" />
+          <span className="text-[15px] font-semibold tracking-tight">
+            Stencil<span className="text-gradient-ember">Forge</span>
+          </span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <Link
+          href="/studio"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-ink-500 bg-ink-800 px-4 text-[13px] font-medium transition hover:border-ember-500 hover:text-ember-300"
+        >
+          Open studio <ArrowRight className="size-3.5" />
+        </Link>
+      </nav>
+
+      <header className="relative mx-auto max-w-6xl px-6 pt-16 pb-24 text-center">
+        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] dot-grid opacity-70 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
+        <span className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-ink-500 bg-ink-800/80 px-3 py-1 font-mono text-[11px] tracking-wider text-ink-100 uppercase">
+          <Sparkles className="size-3 text-ember-400" /> Rust + WebAssembly geometry engine
+        </span>
+        <h1 className="animate-fade-up mx-auto mt-7 max-w-4xl text-balance text-5xl leading-[1.04] font-semibold tracking-tight [animation-delay:80ms] sm:text-7xl">
+          Spray-paint stencils,
+          <br />
+          <span className="text-gradient-ember">engineered</span> for your 3D printer.
+        </h1>
+        <p className="animate-fade-up mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-200 [animation-delay:160ms]">
+          Type text, pick a font, and get a print-ready stencil with perfectly placed bridges. Runs entirely in your browser. Nothing is uploaded.
+        </p>
+        <div className="animate-fade-up mt-10 flex flex-wrap items-center justify-center gap-3 [animation-delay:240ms]">
+          <Link
+            href="/studio"
+            className="inline-flex h-12 items-center gap-2.5 rounded-xl bg-gradient-to-b from-ember-400 to-ember-600 px-7 text-[15px] font-semibold text-ink-950 shadow-[0_0_0_1px_rgb(255_107_26/0.6),0_14px_40px_-10px_rgb(255_107_26/0.7)] transition hover:from-ember-300 hover:to-ember-500"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
+            <Zap className="size-4" /> Start designing
+          </Link>
+          <a href="#features" className="inline-flex h-12 items-center rounded-xl border border-ink-500 px-6 text-[15px] text-ink-100 transition hover:border-ink-300">
+            See features
           </a>
         </div>
-      </main>
+
+        {/* hero artwork: a stencil slab with bridges */}
+        <div className="animate-fade-up relative mx-auto mt-16 max-w-3xl [animation-delay:320ms]">
+          <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-tr from-ember-500/15 via-transparent to-volt-500/15 blur-2xl" />
+          <div className="panel rounded-2xl p-3">
+            <div className="dot-grid relative overflow-hidden rounded-xl border border-ink-700 bg-ink-900 px-6 py-12">
+              <svg viewBox="0 0 620 220" className="mx-auto w-full max-w-xl">
+                <defs>
+                  <linearGradient id="slab" x1="0" y1="1" x2="0" y2="0">
+                    <stop offset="0" stopColor="#7e8693" />
+                    <stop offset="1" stopColor="#a9b0bb" />
+                  </linearGradient>
+                  <mask id="cut">
+                    <rect width="620" height="220" fill="white" />
+                    <text x="310" y="150" textAnchor="middle" fontSize="130" fill="black" style={{ fontFamily: "'Hero Stencil', sans-serif" }}>
+                      STENCIL
+                    </text>
+                  </mask>
+                </defs>
+                <rect x="6" y="6" width="608" height="208" rx="26" fill="url(#slab)" mask="url(#cut)" stroke="rgb(255 255 255 / 0.4)" />
+                {/* bridge accents */}
+                <g fill="#ff6b1a">
+                  <rect x="110" y="84" width="5" height="26" />
+                  <rect x="262" y="96" width="5" height="22" />
+                  <rect x="408" y="90" width="5" height="26" />
+                </g>
+                <g stroke="#2e8bff" strokeWidth="1.2" fill="none" opacity="0.8">
+                  <path d="M6 218 H614" strokeDasharray="4 4" />
+                </g>
+              </svg>
+              <div className="absolute right-4 bottom-3 flex gap-2 font-mono text-[10px] text-ink-300">
+                <span className="rounded bg-ink-700 px-1.5 py-0.5">142 × 62 mm</span>
+                <span className="rounded bg-ember-500/20 px-1.5 py-0.5 text-ember-300">7 bridges</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section id="features" className="mx-auto max-w-6xl px-6 pb-28">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f, i) => (
+            <div
+              key={f.title}
+              className="panel group rounded-2xl p-6 transition hover:border-ink-400"
+              style={{ animation: "fade-up .6s cubic-bezier(.16,1,.3,1) both", animationDelay: `${i * 70}ms` }}
+            >
+              <span className="mb-4 grid size-10 place-items-center rounded-xl bg-ink-700 text-ember-400 transition group-hover:bg-ember-500/15">
+                <f.icon className="size-5" />
+              </span>
+              <h3 className="text-[16px] font-semibold tracking-tight">{f.title}</h3>
+              <p className="mt-2 text-[13.5px] leading-relaxed text-ink-200">{f.body}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-16 text-center">
+          <Link href="/studio" className="inline-flex items-center gap-2 text-[15px] text-ember-300 hover:text-ember-200">
+            Open the studio <ArrowRight className="size-4" />
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
