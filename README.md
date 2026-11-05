@@ -1,4 +1,27 @@
+<div align="center">
+
+<img src="docs/logo.svg" alt="StencilForge logo" width="96" height="96">
+
 # StencilForge
+
+**Turn vector text into 3D-printable spray-paint stencils, entirely in your browser.**
+
+[![Deploy to GitHub Pages](https://github.com/stencilforge/stencilforge/actions/workflows/pages.yml/badge.svg)](https://github.com/stencilforge/stencilforge/actions/workflows/pages.yml)
+[![License: MIT](https://img.shields.io/github/license/stencilforge/stencilforge)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/stencilforge/stencilforge)](https://github.com/stencilforge/stencilforge/commits/main)
+[![Issues](https://img.shields.io/github/issues/stencilforge/stencilforge)](https://github.com/stencilforge/stencilforge/issues)
+[![Stars](https://img.shields.io/github/stars/stencilforge/stencilforge?style=social)](https://github.com/stencilforge/stencilforge)
+
+![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-149ECA?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)
+![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=white)
+
+[Live demo](https://stencilforge.github.io/stencilforge/) · [Report a bug](https://github.com/stencilforge/stencilforge/issues)
+
+</div>
 
 Turn vector text into 3D-printable spray-paint stencils. Everything runs in the browser: a Rust geometry engine compiled to WebAssembly runs in a Web Worker, and a Next.js + Tailwind UI sits on top.
 
