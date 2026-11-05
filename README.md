@@ -42,3 +42,7 @@ src/lib/               store (zustand + undo), defaults, fonts, export, presets
 src/components/        studio UI (viewports, inspector, dialogs) and ui primitives
 public/fonts/          bundled SIL OFL fonts
 ```
+
+## License
+
+[MIT](LICENSE). Bundled fonts in `public/fonts/` are under their own SIL OFL licenses.
