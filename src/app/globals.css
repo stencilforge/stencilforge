@@ -56,12 +56,6 @@
   color-scheme: dark;
 }
 
-@font-face {
-  font-family: "Hero Stencil";
-  src: url("../../public/fonts/AllertaStencil-Regular.ttf") format("truetype");
-  font-display: swap;
-}
-
 html, body {
   height: 100%;
   background: var(--color-ink-900);

@@ -59,32 +59,15 @@ export default function Home() {
           <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-tr from-ember-500/15 via-transparent to-volt-500/15 blur-2xl" />
           <div className="panel rounded-2xl p-3">
             <div className="dot-grid relative overflow-hidden rounded-xl border border-ink-700 bg-ink-900 px-6 py-12">
-              <svg viewBox="0 0 620 220" className="mx-auto w-full max-w-xl">
-                <defs>
-                  <linearGradient id="slab" x1="0" y1="1" x2="0" y2="0">
-                    <stop offset="0" stopColor="#7e8693" />
-                    <stop offset="1" stopColor="#a9b0bb" />
-                  </linearGradient>
-                  <mask id="cut">
-                    <rect width="620" height="220" fill="white" />
-                    <text x="310" y="150" textAnchor="middle" fontSize="130" fill="black" style={{ fontFamily: "'Hero Stencil', sans-serif" }}>
-                      STENCIL
-                    </text>
-                  </mask>
-                </defs>
-                <rect x="6" y="6" width="608" height="208" rx="26" fill="url(#slab)" mask="url(#cut)" stroke="rgb(255 255 255 / 0.4)" />
-                {/* bridge accents */}
-                <g fill="#ff6b1a">
-                  <rect x="110" y="84" width="5" height="26" />
-                  <rect x="262" y="96" width="5" height="22" />
-                  <rect x="408" y="90" width="5" height="26" />
-                </g>
-                <g stroke="#2e8bff" strokeWidth="1.2" fill="none" opacity="0.8">
-                  <path d="M6 218 H614" strokeDasharray="4 4" />
-                </g>
-              </svg>
+              {/* real engine output: "BRIDGE" in Archivo Black, 4 islands anchored by 7 bridges */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/hero-stencil.svg`}
+                alt="The word BRIDGE as a stencil, with orange bridges anchoring the enclosed parts of B, R and D"
+                className="mx-auto w-full max-w-xl"
+              />
               <div className="absolute right-4 bottom-3 flex gap-2 font-mono text-[10px] text-ink-300">
-                <span className="rounded bg-ink-700 px-1.5 py-0.5">142 × 62 mm</span>
+                <span className="rounded bg-ink-700 px-1.5 py-0.5">279 × 73 mm</span>
                 <span className="rounded bg-ember-500/20 px-1.5 py-0.5 text-ember-300">7 bridges</span>
               </div>
             </div>
