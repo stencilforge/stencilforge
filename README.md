@@ -25,6 +25,22 @@
 
 Turn vector text into 3D-printable spray-paint stencils. Everything runs in the browser: a Rust geometry engine compiled to WebAssembly runs in a Web Worker, and a Next.js + Tailwind UI sits on top.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/landing.png" alt="StencilForge landing page" width="860">
+</p>
+
+| Design: bridges placed automatically | Split view with live 3D preview |
+| :---: | :---: |
+| <img src="docs/screenshots/design.png" alt="2D design view with islands and bridges"> | <img src="docs/screenshots/split-view.png" alt="Split view with 2D design and 3D preview"> |
+| **Inverse mode** | **Text on an arc, 3D view** |
+| <img src="docs/screenshots/inverse.png" alt="Inverse stencil mode"> | <img src="docs/screenshots/badge-3d.png" alt="Round badge with arc text in 3D"> |
+
+<p align="center">
+  <img src="docs/screenshots/export.png" alt="Export dialog: STL, 3MF, SVG and project file" width="640">
+</p>
+
 ## Quick start
 
 ```bash
