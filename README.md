@@ -60,7 +60,7 @@ Floating bridges print best spray-face-down; the export dialog turns that orient
 
 ```
 crates/stencil-core/   Rust engine (cdylib → wasm)
-src/engine/            worker + client + generated pkg/ (git-ignored)
+src/engine/            worker + client + prebuilt wasm-pack output in pkg/ (force-added; regenerate with `npm run wasm`)
 src/lib/               store (zustand + undo), defaults, fonts, export, presets
 src/components/        studio UI (viewports, inspector, dialogs) and ui primitives
 public/fonts/          bundled SIL OFL fonts

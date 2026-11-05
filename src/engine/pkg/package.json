@@ -1,0 +1,15 @@
+{
+  "name": "stencil-core",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "stencil_core_bg.wasm",
+    "stencil_core.js",
+    "stencil_core.d.ts"
+  ],
+  "main": "stencil_core.js",
+  "types": "stencil_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
