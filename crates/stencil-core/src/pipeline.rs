@@ -601,3 +601,59 @@ mod bundled_fonts {
         assert!(failures.is_empty());
     }
 }
+
+/// Regression tests for how evenly bridges are spread (hand-checked against the "BRIDGE" hero).
+#[cfg(test)]
+mod bridge_balance {
+    use super::*;
+    use crate::bridges::{comp_info, largest_gap, root_index, MAX_GAP};
+
+    fn seg_dist(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
+        let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+        let l2 = (dx * dx + dy * dy).max(1e-12);
+        let t = (((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2).clamp(0.0, 1.0);
+        ((p[0] - a[0] - t * dx).powi(2) + (p[1] - a[1] - t * dy).powi(2)).sqrt()
+    }
+
+    fn on_shape(s: &geom::Shape, p: [f64; 2]) -> bool {
+        s.iter().any(|c| (0..c.len()).any(|k| seg_dist(p, c[k], c[(k + 1) % c.len()]) < 0.05))
+    }
+
+    #[test]
+    fn bridges_are_spread_around_each_island_and_off_the_corners() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fonts/ArchivoBlack-Regular.ttf");
+        let Ok(data) = std::fs::read(&path) else { return };
+        let mut f = Fonts::new();
+        f.insert("default".into(), data);
+        for text in ["BRIDGE", "OAB8 42", "RDBOP"] {
+            let mut d = Doc::default();
+            if let Content::Text(t) = &mut d.objects[0].content {
+                t.text = text.into();
+                t.size = 60.0;
+            }
+            let c = compute(&d, &f).unwrap();
+            let infos: Vec<_> = c.material.iter().map(comp_info).collect();
+            let root = root_index(&infos);
+            let w = d.bridges.width;
+            for (i, info) in infos.iter().enumerate().filter(|(i, _)| *i != root) {
+                // where each bridge leaves this island
+                let ends: Vec<[f64; 2]> = c
+                    .bridges
+                    .iter()
+                    .flat_map(|b| [b.a, b.b])
+                    .filter(|e| on_shape(&c.material[i], *e))
+                    .collect();
+                let (gap, _) = largest_gap(info.centroid, &ends);
+                assert!(gap <= MAX_GAP + 1e-6, "{text}: island {i} has a {:.0} deg empty arc", gap.to_degrees());
+                // a vertical bridge on a wide island must not hug its left / right edge
+                let (x0, x1) = (info.bbox[0], info.bbox[2]);
+                if x1 - x0 > 6.0 * w {
+                    for b in c.bridges.iter().filter(|b| (b.a[0] - b.b[0]).abs() < 1e-6 && on_shape(&c.material[i], b.a)) {
+                        let x = b.a[0];
+                        assert!(x - x0 >= w && x1 - x >= w, "{text}: island {i} bridge at x={x:.1} hugs its edge ({x0:.1}..{x1:.1})");
+                    }
+                }
+            }
+        }
+    }
+}

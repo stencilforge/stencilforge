@@ -252,6 +252,7 @@ fn candidates(m: &Region, infos: &[CompInfo], cfg: &Bridges, only_islands: &[usi
         let info = &infos[ci];
         let spacing = (info.perimeter / 220.0).max(0.5);
         for c in &m[ci] {
+            let start = out.len();
             let n = c.len();
             let mut carry = 0.0;
             for i in 0..n {
@@ -280,7 +281,12 @@ fn candidates(m: &Region, infos: &[CompInfo], cfg: &Bridges, only_islands: &[usi
                                 let q = [p[0] + d[0] * h, p[1] + d[1] * h];
                                 // slightly prefer perpendicular-to-surface hits
                                 let skew = 1.0 - dot(d, normal).abs();
-                                out.push(Cand { from: ci, to: hc, p, q, len: h, score: h * (1.0 + 0.5 * skew) + pen });
+                                // classic stencil look: near-ties go to horizontal / vertical bridges
+                                let axis = match cfg.strategy {
+                                    Strategy::Shortest | Strategy::Radial => AXIS_BIAS * h * axis_dev(d),
+                                    _ => 0.0,
+                                };
+                                out.push(Cand { from: ci, to: hc, p, q, len: h, score: h * (1.0 + 0.5 * skew) + pen + axis });
                             }
                         }
                     }
@@ -288,9 +294,66 @@ fn candidates(m: &Region, infos: &[CompInfo], cfg: &Bridges, only_islands: &[usi
                 }
                 carry = t - l;
             }
+            center_runs(&mut out[start..], spacing);
         }
     }
     out
+}
+
+/// Weight of the horizontal / vertical preference (fraction of the bridge length at 45 deg).
+const AXIS_BIAS: f64 = 0.06;
+
+/// 0 when `d` is axis-aligned, 1 when it is diagonal.
+fn axis_dev(d: P2) -> f64 {
+    let a = d[1].atan2(d[0]).abs() % std::f64::consts::FRAC_PI_2;
+    let dev = a.min(std::f64::consts::FRAC_PI_2 - a);
+    dev / std::f64::consts::FRAC_PI_4
+}
+
+/// Candidates along a flat stretch of boundary all have (nearly) the same length, so the sort
+/// would pick whichever sample came first, usually a corner. Penalise samples by their distance
+/// from the middle of the stretch so near-ties resolve towards the centre. The penalty stays
+/// within the length tolerance, so a genuinely shorter bridge still wins.
+fn center_runs(cs: &mut [Cand], spacing: f64) {
+    let n = cs.len();
+    if n < 3 {
+        return;
+    }
+    let tol = |len: f64| (0.03 * len).max(0.3);
+    let dir = |c: &Cand| norm([c.q[0] - c.p[0], c.q[1] - c.p[1]]);
+    // does sample k continue the run of its predecessor (circularly)?
+    let linked = |k: usize| {
+        let (a, b) = (&cs[(k + n - 1) % n], &cs[k]);
+        a.from == b.from
+            && a.to == b.to
+            && dist(a.p, b.p) <= spacing * 2.5
+            && (a.len - b.len).abs() <= tol(b.len)
+            && dot(dir(a), dir(b)) > 0.99
+    };
+    let breaks: Vec<bool> = (0..n).map(|k| !linked(k)).collect();
+    let Some(first) = breaks.iter().position(|&b| b) else {
+        return; // one closed loop of equal lengths (e.g. concentric rings): no centre to find
+    };
+    let mut pen = vec![0.0; n];
+    let mut k = 0;
+    while k < n {
+        let begin = (first + k) % n;
+        let mut len = 1;
+        while k + len < n && !breaks[(first + k + len) % n] {
+            len += 1;
+        }
+        if len >= 3 {
+            let mid = (len - 1) as f64 / 2.0;
+            let t = tol(cs[begin].len);
+            for j in 0..len {
+                pen[(begin + j) % n] = 0.5 * t * ((j as f64 - mid).abs() / mid);
+            }
+        }
+        k += len;
+    }
+    for (c, p) in cs.iter_mut().zip(pen) {
+        c.score += p;
+    }
 }
 
 fn angle_of(c: P2, p: P2) -> f64 {
@@ -300,6 +363,32 @@ fn angle_of(c: P2, p: P2) -> f64 {
 fn ang_diff(a: f64, b: f64) -> f64 {
     let d = (a - b).abs() % std::f64::consts::TAU;
     d.min(std::f64::consts::TAU - d)
+}
+
+/// Bridges on one island may leave at most this much of the circle empty before a balancing
+/// bridge is added (225 deg: all bridges within a 135 deg arc count as lopsided).
+pub const MAX_GAP: f64 = 225.0 * std::f64::consts::PI / 180.0;
+/// How strongly redundancy picks favour the side opposite the existing bridges.
+const BALANCE_WEIGHT: f64 = 0.15;
+
+/// Largest empty arc between bridge attachment points around `centroid`: (size, middle angle).
+pub fn largest_gap(centroid: P2, pts: &[P2]) -> (f64, f64) {
+    if pts.is_empty() {
+        return (std::f64::consts::TAU, 0.0);
+    }
+    let mut a: Vec<f64> = pts.iter().map(|p| angle_of(centroid, *p)).collect();
+    a.sort_by(|x, y| x.partial_cmp(y).unwrap());
+    let mut best = (0.0, 0.0);
+    for k in 0..a.len() {
+        let from = a[k];
+        let to = if k + 1 < a.len() { a[k + 1] } else { a[0] + std::f64::consts::TAU };
+        let g = to - from;
+        let g = if a.len() == 1 { std::f64::consts::TAU } else { g };
+        if g > best.0 {
+            best = (g, from + g / 2.0);
+        }
+    }
+    best
 }
 
 pub struct Plan {
@@ -354,7 +443,8 @@ pub fn plan(m: &Region, infos: &[CompInfo], root: usize, cfg: &Bridges) -> Plan 
     let rr = dsu.find(root);
     let unreachable: Vec<usize> = islands.iter().copied().filter(|&i| dsu.find(i) != rr).collect();
 
-    // 2. Redundancy: ensure each island has >= min_per_island bridges, spread around the island.
+    // 2. Redundancy: each island gets >= min_per_island bridges, spread around it. If those all
+    //    sit on one side (largest empty arc > MAX_GAP) one more balancing bridge is added.
     let want = cfg.min_per_island as usize;
     if want > 1 {
         for &i in &islands {
@@ -366,33 +456,48 @@ pub fn plan(m: &Region, infos: &[CompInfo], root: usize, cfg: &Bridges) -> Plan 
             };
             let mut pts = touching(&ends);
             let mut min_ang = std::f64::consts::TAU / (want as f64 + 1.0);
-            while pts.len() < want {
-                let mut picked: Option<usize> = None;
+            let mut balance_left = 1;
+            // scale for the balance term: the island's best candidate
+            let scale = cands.iter().find(|c| c.from == i).map_or(1.0, |c| c.score.max(0.5));
+            loop {
+                let need = pts.len() < want;
+                let (gap, gap_mid) = largest_gap(centroid, &pts);
+                let balance = !need && balance_left > 0 && gap > MAX_GAP;
+                if !need && !balance {
+                    break;
+                }
+                let mut best: Option<(usize, f64)> = None;
                 for (k, c) in cands.iter().enumerate() {
-                    if used[k] || c.from != i {
-                        continue;
-                    }
-                    if dist(c.p, c.q) < 0.2 {
+                    if used[k] || c.from != i || dist(c.p, c.q) < 0.2 {
                         continue;
                     }
                     let a = angle_of(centroid, c.p);
                     let ok = pts.iter().all(|p| ang_diff(angle_of(centroid, *p), a) >= min_ang)
                         && pts.iter().all(|p| dist(*p, c.p) > cfg.width * 3.0);
-                    if ok {
-                        picked = Some(k);
-                        break; // sorted by score
+                    // a balancing bridge must land well inside the empty arc
+                    if !ok || (balance && ang_diff(a, gap_mid) > gap / 2.0 - min_ang / 2.0) {
+                        continue;
+                    }
+                    // prefer the bridge that sits opposite the existing ones
+                    let toward_gap = if pts.is_empty() { 0.0 } else { ang_diff(a, gap_mid) / std::f64::consts::PI };
+                    let score = c.score + BALANCE_WEIGHT * scale * toward_gap;
+                    if best.map_or(true, |b| score < b.1) {
+                        best = Some((k, score));
                     }
                 }
-                match picked {
-                    Some(k) => {
+                match best {
+                    Some((k, _)) => {
                         used[k] = true;
                         let c = &cands[k];
                         chosen.push(mk(c));
                         ends.push((c.from, c.p, c.to, c.q));
                         pts.push(c.p);
+                        if !need {
+                            balance_left -= 1;
+                        }
                     }
                     None => {
-                        if min_ang < 0.1 {
+                        if !need || min_ang < 0.1 {
                             break;
                         }
                         min_ang *= 0.5;
@@ -498,5 +603,94 @@ mod tests {
         assert!((b.a[1] - 40.0).abs() < 0.2 && (b.b[1] - 50.0).abs() < 0.2, "{:?}", (b.a, b.b));
         let u = union(&m, &bridge_region(b, 0.5));
         assert_eq!(u.len(), 1);
+    }
+
+    fn islands_of(m: &Region) -> (Vec<CompInfo>, usize) {
+        let infos: Vec<CompInfo> = m.iter().map(comp_info).collect();
+        let root = root_index(&infos);
+        (infos, root)
+    }
+
+    fn connected(m: &Region, p: &Plan) -> bool {
+        let mut u = m.clone();
+        for b in &p.bridges {
+            u = union(&u, &bridge_region(b, 0.5));
+        }
+        u.len() == 1
+    }
+
+    /// Is `e` (within a hair) on a contour of `s`?
+    fn on_boundary(s: &Shape, e: P2) -> bool {
+        s.iter().any(|c| {
+            (0..c.len()).any(|k| {
+                let (a, b) = (c[k], c[(k + 1) % c.len()]);
+                let l = dist(a, b).max(1e-9);
+                let t = (((e[0] - a[0]) * (b[0] - a[0]) + (e[1] - a[1]) * (b[1] - a[1])) / (l * l)).clamp(0.0, 1.0);
+                dist(e, [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]) < 0.05
+            })
+        })
+    }
+
+    #[test]
+    fn bridge_on_a_flat_edge_is_centred_not_in_a_corner() {
+        // a wide island floating above the slab's bottom edge: every downward ray is the same length
+        let slab = rect(0., 0., 100., 60.);
+        let open = difference(&rect(20., 15., 80., 45.), &rect(30., 25., 70., 35.));
+        let m = difference(&slab, &open);
+        let (infos, root) = islands_of(&m);
+        let cfg = Bridges { min_per_island: 2, ..Bridges::default() };
+        let p = plan(&m, &infos, root, &cfg);
+        assert!(p.unreachable.is_empty());
+        assert!(connected(&m, &p));
+        for b in p.bridges.iter().filter(|b| (b.a[0] - b.b[0]).abs() < 1e-6) {
+            let x = b.a[0];
+            assert!((x - 50.0).abs() < 8.0, "vertical bridge hugging a corner at x = {x}");
+        }
+    }
+
+    #[test]
+    fn island_bridges_leave_on_opposite_sides() {
+        let slab = rect(0., 0., 100., 60.);
+        let open = difference(&rect(20., 10., 80., 50.), &rect(35., 20., 65., 40.));
+        let m = difference(&slab, &open);
+        let (infos, root) = islands_of(&m);
+        let p = plan(&m, &infos, root, &Bridges::default());
+        assert!(connected(&m, &p));
+        let isl = (0..m.len()).find(|&i| i != root).unwrap();
+        let c = infos[isl].centroid;
+        let angs: Vec<f64> = p
+            .bridges
+            .iter()
+            .map(|b| if dist(b.a, c) < dist(b.b, c) { b.a } else { b.b })
+            .map(|e| angle_of(c, e))
+            .collect();
+        assert!(angs.len() >= 2);
+        let spread = angs.iter().flat_map(|a| angs.iter().map(move |b| ang_diff(*a, *b))).fold(0.0, f64::max);
+        assert!(spread >= 150f64.to_radians(), "bridges only {:.0} deg apart", spread.to_degrees());
+    }
+
+    #[test]
+    fn stacked_islands_are_not_all_bridged_on_one_side() {
+        // two counters, one above the other, inside a letter-like block (think "B")
+        let slab = rect(0., 0., 100., 100.);
+        let open = union(&rect(30., 55., 70., 80.), &rect(30., 20., 70., 45.));
+        let block = difference(&rect(10., 10., 90., 90.), &open);
+        let open_all = difference(&rect(5., 5., 95., 95.), &block);
+        let m = difference(&slab, &open_all);
+        let (infos, root) = islands_of(&m);
+        let p = plan(&m, &infos, root, &Bridges::default());
+        assert!(p.unreachable.is_empty());
+        assert!(connected(&m, &p));
+        for i in (0..m.len()).filter(|&i| i != root) {
+            let c = infos[i].centroid;
+            let pts: Vec<P2> = p
+                .bridges
+                .iter()
+                .flat_map(|b| [b.a, b.b])
+                .filter(|e| on_boundary(&m[i], *e))
+                .collect();
+            let (gap, _) = largest_gap(c, &pts);
+            assert!(gap <= MAX_GAP + 1e-6, "island {i}: {:.0} deg empty arc", gap.to_degrees());
+        }
     }
 }
