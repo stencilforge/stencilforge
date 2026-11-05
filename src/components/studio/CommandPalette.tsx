@@ -1,7 +1,7 @@
 "use client";
 import { Command } from "cmdk";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Box, Download, LayoutPanelLeft, PenTool, Plus, Redo2, Ruler, Sparkles, Undo2 } from "lucide-react";
+import { Box, Download, FilePlus2, LayoutPanelLeft, PenTool, Plus, Redo2, Ruler, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { useStudio, undo, redo } from "@/lib/store";
 import { PRESETS } from "@/lib/presets";
 
@@ -9,6 +9,7 @@ export function CommandPalette() {
   const open = useStudio((s) => s.paletteOpen);
   const setOpen = useStudio((s) => s.setPalette);
   const st = useStudio.getState;
+  const canDelete = useStudio((s) => s.doc.objects.length > 1 && s.selectedId !== null);
   const run = (fn: () => void) => () => {
     setOpen(false);
     fn();
@@ -31,9 +32,17 @@ export function CommandPalette() {
             <Command.List className="max-h-[360px] overflow-y-auto p-2">
               <Command.Empty className="p-6 text-center text-sm text-ink-300">Nothing found.</Command.Empty>
               <Command.Group heading="Actions" className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-ink-300 [&_[cmdk-group-heading]]:uppercase">
+                <Command.Item className={item} onSelect={run(() => st().newDoc())}>
+                  <FilePlus2 className="size-4 text-ember-400" /> New design
+                </Command.Item>
                 <Command.Item className={item} onSelect={run(() => st().addText())}>
                   <Plus className="size-4 text-ember-400" /> Add text object
                 </Command.Item>
+                {canDelete && (
+                  <Command.Item className={item} onSelect={run(() => st().selectedId && st().removeObj(st().selectedId!))}>
+                    <Trash2 className="size-4 text-ink-200" /> Delete selected object
+                  </Command.Item>
+                )}
                 <Command.Item className={item} onSelect={run(() => st().setExport(true))}>
                   <Download className="size-4 text-ember-400" /> Export…
                 </Command.Item>

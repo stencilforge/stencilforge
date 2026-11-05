@@ -11,6 +11,7 @@ import { Viewport3D } from "./Viewport3D";
 import { StatusBar } from "./StatusBar";
 import { ExportDialog } from "./ExportDialog";
 import { CommandPalette } from "./CommandPalette";
+import { Toast } from "./Toast";
 import { PRESETS } from "@/lib/presets";
 import { Sparkles } from "lucide-react";
 
@@ -38,6 +39,12 @@ export function Studio() {
       } else if (mod && e.key.toLowerCase() === "y" && !typing) {
         e.preventDefault();
         redo();
+      } else if (!mod && !typing && !e.defaultPrevented && (e.key === "Delete" || e.key === "Backspace")) {
+        // (the 2D viewport claims the key first when a bridge is selected)
+        if (st.selectedId && st.doc.objects.length > 1) {
+          e.preventDefault();
+          st.removeObj(st.selectedId);
+        }
       } else if (!mod && !typing && ["1", "2", "3"].includes(e.key)) {
         st.setView(e.key === "1" ? "design" : e.key === "2" ? "split" : "3d");
       }
@@ -78,6 +85,7 @@ export function Studio() {
       <StatusBar />
       <ExportDialog />
       <CommandPalette />
+      <Toast />
     </div>
   );
 }

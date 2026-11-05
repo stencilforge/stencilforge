@@ -1,5 +1,5 @@
 "use client";
-import { Box, Command, Download, LayoutPanelLeft, Redo2, Ruler, Undo2, PenTool } from "lucide-react";
+import { Box, Command, Download, FilePlus2, LayoutPanelLeft, Redo2, Ruler, Undo2, PenTool } from "lucide-react";
 import { useStore } from "zustand";
 import { useStudio, undo, redo } from "@/lib/store";
 import { Button, IconButton, Segmented, Tip } from "@/components/ui/controls";
@@ -13,6 +13,7 @@ export function TopBar() {
   const setUnits = useStudio((s) => s.setUnits);
   const setPalette = useStudio((s) => s.setPalette);
   const setExport = useStudio((s) => s.setExport);
+  const newDoc = useStudio((s) => s.newDoc);
   const canUndo = useStore(useStudio.temporal, (s) => s.pastStates.length > 0);
   const canRedo = useStore(useStudio.temporal, (s) => s.futureStates.length > 0);
 
@@ -27,6 +28,11 @@ export function TopBar() {
 
       <div className="mx-1 h-5 w-px bg-ink-600" />
       <div className="flex items-center">
+        <Tip label="New design (undo to get it back)">
+          <IconButton aria-label="New design" onClick={newDoc}>
+            <FilePlus2 className="size-4" />
+          </IconButton>
+        </Tip>
         <Tip label="Undo" kbd="⌘Z">
           <IconButton disabled={!canUndo} onClick={undo}>
             <Undo2 className="size-4" />

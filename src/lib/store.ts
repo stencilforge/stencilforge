@@ -46,9 +46,15 @@ interface StudioState {
   exportOpen: boolean;
   tool: Tool;
   selectedBridge: string | null;
+  /** Transient message with an Undo button; UI-only, never part of undo history. */
+  toast: { id: number; message: string } | null;
 
+  showToast: (message: string) => void;
+  dismissToast: () => void;
   updateDoc: (fn: (d: Doc) => void) => void;
   replaceDoc: (d: Doc) => void;
+  /** Start over from the default design (undoable). */
+  newDoc: () => void;
   updateObj: (id: string, fn: (o: Obj) => void) => void;
   updateText: (id: string, patch: Partial<TextObj>) => void;
   addText: () => void;
@@ -74,7 +80,24 @@ interface StudioState {
 }
 
 let counter = 1;
+let toastCounter = 0;
+
+// Rapid edits (slider drags, typing) collapse into one undo step. `burst` is the open window.
+let burst: ReturnType<typeof setTimeout> | null = null;
+const endBurst = () => {
+  if (burst) clearTimeout(burst);
+  burst = null;
+};
+/** Run a discrete action (add, delete, new design…) as its own undo step, never merged with neighbours. */
+const discrete = (fn: () => void) => {
+  endBurst();
+  fn();
+  endBurst();
+};
 const newId = () => `obj${Date.now().toString(36)}${counter++}`;
+
+/** Short display name for an object (first line of its text). */
+export const objectLabel = (o: Obj) => (o.content.type === "text" ? o.content.text.split("\n")[0] || "Empty text" : "Object");
 
 export const useStudio = create<StudioState>()(
   temporal(
@@ -93,13 +116,26 @@ export const useStudio = create<StudioState>()(
       exportOpen: false,
       tool: "select",
       selectedBridge: null,
+      toast: null,
 
+      showToast: (message) => set((s) => void (s.toast = { id: ++toastCounter, message })),
+      dismissToast: () => set((s) => void (s.toast = null)),
       updateDoc: (fn) => set((s) => void fn(s.doc)),
       replaceDoc: (d) =>
-        set((s) => {
-          s.doc = d;
-          s.selectedId = d.objects[0]?.id ?? null;
-        }),
+        discrete(() =>
+          set((s) => {
+            s.doc = d;
+            s.selectedId = d.objects[0]?.id ?? null;
+          })),
+      newDoc: () =>
+        discrete(() =>
+          set((s) => {
+            s.doc = defaultDoc();
+            s.selectedId = s.doc.objects[0]?.id ?? null;
+            s.selectedBridge = null;
+            s.tool = "select";
+            s.toast = { id: ++toastCounter, message: "Started a new design" };
+          })),
       updateObj: (id, fn) =>
         set((s) => {
           const o = s.doc.objects.find((x) => x.id === id);
@@ -111,31 +147,38 @@ export const useStudio = create<StudioState>()(
           if (o && o.content.type === "text") Object.assign(o.content, patch);
         }),
       addText: () =>
-        set((s) => {
-          const o = defaultObj(newId());
-          if (o.content.type === "text") {
-            o.content.text = "TEXT";
-            o.content.size = 30;
-          }
-          o.y = -((s.doc.objects.length) * 10);
-          s.doc.objects.push(o);
-          s.selectedId = o.id;
-        }),
+        discrete(() =>
+          set((s) => {
+            const o = defaultObj(newId());
+            if (o.content.type === "text") {
+              o.content.text = "TEXT";
+              o.content.size = 30;
+            }
+            o.y = -((s.doc.objects.length) * 10);
+            s.doc.objects.push(o);
+            s.selectedId = o.id;
+          })),
       removeObj: (id) =>
-        set((s) => {
-          s.doc.objects = s.doc.objects.filter((o) => o.id !== id);
-          if (s.selectedId === id) s.selectedId = s.doc.objects[0]?.id ?? null;
-        }),
+        discrete(() =>
+          set((s) => {
+            // a design always keeps at least one object (use newDoc to start over)
+            const gone = s.doc.objects.find((o) => o.id === id);
+            if (!gone || s.doc.objects.length < 2) return;
+            s.doc.objects = s.doc.objects.filter((o) => o.id !== id);
+            if (s.selectedId === id) s.selectedId = s.doc.objects[0]?.id ?? null;
+            s.toast = { id: ++toastCounter, message: `Deleted “${objectLabel(gone)}”` };
+          })),
       duplicateObj: (id) =>
-        set((s) => {
-          const src = s.doc.objects.find((o) => o.id === id);
-          if (!src) return;
-          const copy = structuredClone(JSON.parse(JSON.stringify(src))) as Obj;
-          copy.id = newId();
-          copy.y -= 10;
-          s.doc.objects.push(copy);
-          s.selectedId = copy.id;
-        }),
+        discrete(() =>
+          set((s) => {
+            const src = s.doc.objects.find((o) => o.id === id);
+            if (!src) return;
+            const copy = structuredClone(JSON.parse(JSON.stringify(src))) as Obj;
+            copy.id = newId();
+            copy.y -= 10;
+            s.doc.objects.push(copy);
+            s.selectedId = copy.id;
+          })),
       select: (id) => set((s) => void (s.selectedId = id)),
       setView: (v) => set((s) => void (s.view = v)),
       setUnits: (u) => set((s) => void (s.units = u)),
@@ -186,29 +229,30 @@ export const useStudio = create<StudioState>()(
       partialize: (s) => ({ doc: s.doc }),
       equality: (a, b) => a.doc === b.doc,
       limit: 100,
-      handleSet: (handleSet) => {
-        let timer: ReturnType<typeof setTimeout> | null = null;
-        let pendingPast: unknown = null;
-        return (past: unknown) => {
-          if (!timer) {
-            pendingPast = past;
-            (handleSet as (p: unknown) => void)(past);
-          } else {
-            clearTimeout(timer);
-          }
-          timer = setTimeout(() => {
-            timer = null;
-            pendingPast = null;
-          }, 450);
-          void pendingPast;
-        };
+      handleSet: (handleSet) => (past) => {
+        if (!burst) (handleSet as (p: unknown) => void)(past);
+        else clearTimeout(burst);
+        burst = setTimeout(() => {
+          burst = null;
+        }, 450);
       },
     },
   ),
 );
 
-export const undo = () => useStudio.temporal.getState().undo();
-export const redo = () => useStudio.temporal.getState().redo();
+/** Selection isn't part of undo history, so after a step back/forward make sure it still points at an object. */
+const keepSelectionValid = () => {
+  const { doc, selectedId, select } = useStudio.getState();
+  if (!doc.objects.some((o) => o.id === selectedId)) select(doc.objects[0]?.id ?? null);
+};
+export const undo = () => {
+  useStudio.temporal.getState().undo();
+  keepSelectionValid();
+};
+export const redo = () => {
+  useStudio.temporal.getState().redo();
+  keepSelectionValid();
+};
 
 // --- persistence ---------------------------------------------------------------------------
 const KEY = "stencilforge:doc:v1";

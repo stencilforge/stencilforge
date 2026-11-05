@@ -190,6 +190,7 @@ export function Viewport2D({ className }: { className?: string }) {
         st.setTool("select");
         st.selectBridge(null);
       } else if ((e.key === "Delete" || e.key === "Backspace") && st.selectedBridge) {
+        e.preventDefault(); // handled here, so the studio doesn't also delete the selected object
         const br = st.result?.bridges.find((x) => bridgeKey(x) === st.selectedBridge);
         if (br) st.removeBridge(br);
       }

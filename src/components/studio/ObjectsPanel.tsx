@@ -1,7 +1,7 @@
 "use client";
-import { Copy, Eye, EyeOff, Plus, Type } from "lucide-react";
+import { Copy, Eye, EyeOff, Plus, Trash2, Type } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { useStudio } from "@/lib/store";
+import { useStudio, objectLabel } from "@/lib/store";
 import { IconButton, Tip } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,8 @@ export function ObjectsPanel() {
   const addText = useStudio((s) => s.addText);
   const duplicate = useStudio((s) => s.duplicateObj);
   const update = useStudio((s) => s.updateObj);
+  const remove = useStudio((s) => s.removeObj);
+  const last = objects.length < 2;
 
   return (
     <div className="flex h-full flex-col">
@@ -26,7 +28,7 @@ export function ObjectsPanel() {
       <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 pb-3">
         <AnimatePresence initial={false}>
           {objects.map((o) => {
-            const label = o.content.type === "text" ? o.content.text.split("\n")[0] || "Empty text" : "Object";
+            const label = objectLabel(o);
             const on = o.id === selectedId;
             return (
               <motion.div
@@ -45,25 +47,46 @@ export function ObjectsPanel() {
                   <Type className="size-3.5" />
                 </span>
                 <span className={cn("min-w-0 flex-1 truncate text-[12.5px]", !o.visible && "text-ink-300 line-through")}>{label}</span>
-                <span className="flex opacity-0 transition group-hover:opacity-100">
-                  <IconButton
-                    className="size-6"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      duplicate(o.id);
-                    }}
-                  >
-                    <Copy className="size-3" />
-                  </IconButton>
-                  <IconButton
-                    className="size-6"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      update(o.id, (x) => void (x.visible = !x.visible));
-                    }}
-                  >
-                    {o.visible ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
-                  </IconButton>
+                <span className="flex opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
+                  <Tip label="Duplicate" side="top">
+                    <IconButton
+                      className="size-6"
+                      aria-label="Duplicate"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicate(o.id);
+                      }}
+                    >
+                      <Copy className="size-3" />
+                    </IconButton>
+                  </Tip>
+                  <Tip label={o.visible ? "Hide" : "Show"} side="top">
+                    <IconButton
+                      className="size-6"
+                      aria-label={o.visible ? "Hide" : "Show"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        update(o.id, (x) => void (x.visible = !x.visible));
+                      }}
+                    >
+                      {o.visible ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                    </IconButton>
+                  </Tip>
+                  <Tip label={last ? "A design needs at least one object. Use New design to start over" : "Delete"} side="top">
+                    <span>
+                      <IconButton
+                        className="size-6 hover:text-danger"
+                        aria-label="Delete"
+                        disabled={last}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          remove(o.id);
+                        }}
+                      >
+                        <Trash2 className="size-3" />
+                      </IconButton>
+                    </span>
+                  </Tip>
                 </span>
               </motion.div>
             );

@@ -63,3 +63,38 @@ test("bridge tool adds a manual bridge and delete removes it", async ({ page }) 
   await page.keyboard.press("Delete");
   await expect(page.locator("footer").getByText("0 bridges")).toBeVisible({ timeout: 15_000 });
 });
+
+test("objects can be deleted and a new design can be started, both undoable", async ({ page }) => {
+  await page.goto("/studio");
+  await expect(page.getByText("Ready", { exact: true })).toBeVisible({ timeout: 45_000 });
+  const rows = page.locator("aside").first().locator("div.group");
+  const toast = page.getByRole("status").filter({ has: page.getByRole("button", { name: "Undo" }) });
+
+  // the only object can't be deleted
+  await expect(rows).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Delete" })).toBeDisabled();
+
+  // add an object with "+", delete it from its row, undo from the toast
+  await page.locator("aside").first().getByRole("button").first().click();
+  await expect(rows).toHaveCount(2);
+  await page.getByRole("button", { name: "Delete" }).last().click();
+  await expect(rows).toHaveCount(1);
+  await expect(toast).toContainText("Deleted");
+  await toast.getByRole("button", { name: "Undo" }).click();
+  await expect(rows).toHaveCount(2);
+
+  // the Delete key removes the selected object
+  await page.locator("body").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("Delete");
+  await expect(rows).toHaveCount(1);
+
+  // new design: reset to the default sample, then undo brings the edit back
+  const area = page.locator("textarea").first();
+  await area.fill("MINE");
+  await expect(rows.first()).toContainText("MINE");
+  await page.getByRole("button", { name: "New design" }).click();
+  await expect(area).toHaveValue("STENCIL");
+  await expect(toast).toContainText("new design");
+  await toast.getByRole("button", { name: "Undo" }).click();
+  await expect(area).toHaveValue("MINE");
+});
